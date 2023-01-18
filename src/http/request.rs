@@ -1,12 +1,31 @@
 use super::method::{Method, MethodError};
-use std::{convert::TryFrom, error::Error, fmt::{Display, Debug}, fmt::Result as FmtResult, str::{self, Utf8Error}};
 use super::{QueryString, QueryStringValue};
+use std::{
+    convert::TryFrom,
+    error::Error,
+    fmt::Result as FmtResult,
+    fmt::{Debug, Display},
+    str::{self, Utf8Error},
+};
 
 #[derive(Debug)]
 pub struct Request<'buf> {
     path: &'buf str,
     query_string: Option<QueryString<'buf>>,
     method: Method,
+}
+
+impl<'buf> Request<'buf> {
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+    pub fn query_string(&self) -> Option<&QueryString<'buf>>{
+        self.query_string.as_ref()
+    }
+
+    pub fn method(&self) -> &Method {
+        &self.method
+    }
 }
 
 impl<'buf> TryFrom<&'buf [u8]> for Request<'buf> {
@@ -21,9 +40,9 @@ impl<'buf> TryFrom<&'buf [u8]> for Request<'buf> {
         if protocol != "HTTP/1.1" {
             return Err(ParseError::InvalidProtocol);
         }
-        let method : Method = method.parse()?;
+        let method: Method = method.parse()?;
         let mut query_string: Option<QueryString<'buf>> = None;
-    
+
         if let Some(i) = path.find('?') {
             query_string = Some(QueryString::from(&path[i + 1..]));
             path = &path[..i];
@@ -31,23 +50,22 @@ impl<'buf> TryFrom<&'buf [u8]> for Request<'buf> {
         Ok(Self {
             path,
             query_string,
-            method
+            method,
         })
     }
-
 }
 
-fn get_next_word(request: &str) -> Option<(&str, &str)>{
+fn get_next_word(request: &str) -> Option<(&str, &str)> {
     for (index, c) in request.chars().enumerate() {
-        if c == ' ' || c == '\r'{
-            return Some((&request[..index], &request[index + 1..]))
+        if c == ' ' || c == '\r' {
+            return Some((&request[..index], &request[index + 1..]));
         }
     }
 
     None
 }
 
-impl From<Utf8Error> for ParseError{
+impl From<Utf8Error> for ParseError {
     fn from(_: Utf8Error) -> Self {
         Self::InvalidEncoding
     }
@@ -89,6 +107,4 @@ impl Debug for ParseError {
     }
 }
 
-impl Error for ParseError {
-    
-}
+impl Error for ParseError {}
